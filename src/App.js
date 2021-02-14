@@ -1,56 +1,26 @@
-import React from 'react';
-import logo from './logo.svg';
-import { Counter } from './features/counter/Counter';
-import './App.css';
+import React, { useCallback } from 'react';
+import { useDropzone } from 'react-dropzone'
+import { useSelector, useDispatch } from 'react-redux';
+
+import FullScreenMap from './components/FullScreenMap'
+import { Houses, readHouseFile } from './features/houses'
 
 function App() {
+  const dispatch = useDispatch()
+  const onDrop = useCallback(acceptedFiles => {
+    dispatch(readHouseFile(acceptedFiles[0]))
+  }, [])
+
+  const { getRootProps, getInputProps } = useDropzone({ onDrop })
+
   return (
-    <div className="App">
-      <header className="App-header">
-        <img src={logo} className="App-logo" alt="logo" />
-        <Counter />
-        <p>
-          Edit <code>src/App.js</code> and save to reload.
-        </p>
-        <span>
-          <span>Learn </span>
-          <a
-            className="App-link"
-            href="https://reactjs.org/"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            React
-          </a>
-          <span>, </span>
-          <a
-            className="App-link"
-            href="https://redux.js.org/"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Redux
-          </a>
-          <span>, </span>
-          <a
-            className="App-link"
-            href="https://redux-toolkit.js.org/"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Redux Toolkit
-          </a>
-          ,<span> and </span>
-          <a
-            className="App-link"
-            href="https://react-redux.js.org/"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            React Redux
-          </a>
-        </span>
-      </header>
+    <div  {...getRootProps({
+      onClick: event => event.stopPropagation()
+    })}>
+      <input {...getInputProps()} />
+      <FullScreenMap center={[-103.37110564112663, 20.669135907924424]} zoom={[20]}>
+        <Houses />
+      </FullScreenMap>
     </div>
   );
 }
