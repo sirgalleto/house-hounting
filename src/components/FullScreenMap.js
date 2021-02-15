@@ -1,3 +1,4 @@
+import { memo } from 'react'
 import ReactMapboxGl from 'react-mapbox-gl';
 import 'mapbox-gl/dist/mapbox-gl.css'
 
@@ -18,5 +19,5 @@ const FullScreenMap = (props) => (
     </MapboxMap>
 )
 
-export default FullScreenMap
+export default memo(FullScreenMap)
 

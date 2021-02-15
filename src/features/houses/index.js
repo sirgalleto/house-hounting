@@ -1,8 +1,10 @@
 import Houses from './Houses'
 
-import { readHouseFile } from './housesSlice'
+import { readHouseFile, hydrateLocalStorage, selectCenter } from './housesSlice'
 
 export {
     Houses,
-    readHouseFile
+    readHouseFile,
+    hydrateLocalStorage,
+    selectCenter
 }

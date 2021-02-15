@@ -1,10 +1,12 @@
 import { createSlice } from '@reduxjs/toolkit';
 import Papa from 'papaparse';
 import mbxGeocoding from '@mapbox/mapbox-sdk/services/geocoding'
+import camelcase from 'camelcase'
+import { points, center } from '@turf/turf'
 
 import config from '../../config'
 
-const geocodingServcice = mbxGeocoding({ accessToken: config.mapboxAccessToken })
+const geocodingService = mbxGeocoding({ accessToken: config.mapboxAccessToken })
 
 export const housesSlice = createSlice({
     name: 'houses',
@@ -26,21 +28,44 @@ export const housesSlice = createSlice({
 export const { ingest } = housesSlice.actions;
 
 async function constructHouse(house) {
-    const { Name: name, Direccion: address } = house
-    const result = await geocodingServcice
+    const { address} = house
+    const result = await geocodingService
         .forwardGeocode({
             query: address,
-            types: ['address', 'place', 'region', 'locality'],
-            limit: 1
+            types: ['address', 'place'],
+            limit: 1,
+            countries: ['MX']
         })
         .send()
 
     const { body: { features }} = result 
 
-    return {
-        id: name,
-        coordinates: features[0]?.center
+    return {    
+        coordinates: features[0]?.center,
+        ...house
     }
+}
+
+export const hydrateLocalStorage = () => async dispatch => {
+    const csv = localStorage.getItem('csv')
+
+    if (!csv) return 
+
+    const { data: houses } = Papa.parse(csv, {
+        header: true, transformHeader: (header) => {
+            return camelcase(header)
+        }
+    })
+
+    try {
+        const housesList = await Promise.all(houses.map((house, index) => constructHouse({ id: index, ...house})))
+        
+        dispatch(ingest(housesList))
+    } catch(e) {
+        console.error(e)
+    }
+
+
 }
 
 export const readHouseFile = file => dispatch => {
@@ -49,12 +74,18 @@ export const readHouseFile = file => dispatch => {
     reader.onabort = () => console.info('file reading was aborted')
     reader.onerror = () => console.error('file reading has failed')
     reader.onload = async () => {
-        // Do whatever you want with the file contents
         const binaryStr = reader.result
         const csv = new TextDecoder().decode(binaryStr)
-        const { data: houses } = Papa.parse(csv, { header: true })
 
-        const housesList = await Promise.all(houses.map(house => constructHouse(house)))
+        localStorage.setItem('csv', csv)
+        
+        const { data: houses } = Papa.parse(csv, {
+            header: true, transformHeader: (header) => {
+                return camelcase(header)
+            }
+        })
+
+        const housesList = await Promise.all(houses.map((house, index) => constructHouse({ ...house, id: index})))
 
         dispatch(ingest(housesList))
     }
@@ -64,5 +95,14 @@ export const readHouseFile = file => dispatch => {
 }
 
 export const selectList = state => state?.houses?.list ?? []
+export const selectCenter = state => {
+    if (state?.houses?.list.length === 0) {
+        return [0,0]
+    }
+    
+    return center(
+        points(state?.houses?.list.map(({ coordinates }) => coordinates))
+    )?.geometry?.coordinates
+}
 
 export default housesSlice.reducer;
